@@ -220,6 +220,176 @@ GO
 
 
 
+-- TASK 3 - ALTER: the business changes
+
+-- 3.1
+ALTER TABLE Membership.Member
+    ADD CONSTRAINT FK_Member_City FOREIGN KEY (CityId)
+        REFERENCES Membership.City (Id);
+
+ALTER TABLE Membership.Member
+    ADD CONSTRAINT FK_Member_Member FOREIGN KEY (InvitedBy)
+        REFERENCES Membership.Member (Id);
+
+ALTER TABLE Membership.Wallet
+    ADD CONSTRAINT FK_Wallet_Member FOREIGN KEY (MemberId)
+        REFERENCES Membership.Member (Id);
+
+ALTER TABLE Logistics.Warehouse
+    ADD CONSTRAINT FK_Warehouse_City FOREIGN KEY (CityId)
+        REFERENCES Membership.City (Id);
+
+ALTER TABLE Logistics.Warehouse
+    ADD CONSTRAINT FK_Warehouse_Employee FOREIGN KEY (ManagerId)
+        REFERENCES Logistics.Employee (Id);
+
+ALTER TABLE Logistics.Employee
+    ADD CONSTRAINT FK_Employee_Member FOREIGN KEY (MemberId)
+        REFERENCES Membership.Member (Id);
+
+ALTER TABLE Logistics.Employee
+    ADD CONSTRAINT FK_Employee_Warehouse FOREIGN KEY (WarehouseId)
+        REFERENCES Logistics.Warehouse (Id);
+
+ALTER TABLE Catalog.Category
+    ADD CONSTRAINT FK_Category_Category FOREIGN KEY (ParentCode)
+        REFERENCES Catalog.Category (CategoryCode);
+
+ALTER TABLE Catalog.Item
+    ADD CONSTRAINT FK_Item_Member_Seller FOREIGN KEY (SellerId)
+        REFERENCES Membership.Member (Id);
+
+ALTER TABLE Catalog.Item
+    ADD CONSTRAINT FK_Item_Member_Inspector FOREIGN KEY (InspectorId)
+        REFERENCES Membership.Member (Id);
+
+ALTER TABLE Catalog.Item
+    ADD CONSTRAINT FK_Item_Category FOREIGN KEY (CategoryCode)
+        REFERENCES Catalog.Category (CategoryCode);
+
+ALTER TABLE Catalog.Item
+    ADD CONSTRAINT FK_Item_Warehouse FOREIGN KEY (WarehouseId)
+        REFERENCES Logistics.Warehouse (Id);
+
+ALTER TABLE Catalog.ItemPhoto
+    ADD CONSTRAINT FK_ItemPhoto_Item FOREIGN KEY (ItemId)
+        REFERENCES Catalog.Item (Id)
+        ON DELETE CASCADE;
+
+ALTER TABLE Sales.Bid
+    ADD CONSTRAINT FK_Bid_Auction FOREIGN KEY (AuctionId)
+        REFERENCES Sales.Auction (Id);
+
+ALTER TABLE Sales.Bid
+    ADD CONSTRAINT FK_Bid_Member FOREIGN KEY (MemberId)
+        REFERENCES Membership.Member (Id);
+
+ALTER TABLE Sales.AuctionFollow
+    ADD CONSTRAINT FK_AuctionFollow_Member FOREIGN KEY (MemberId)
+        REFERENCES Membership.Member (Id);
+
+ALTER TABLE Sales.AuctionFollow
+    ADD CONSTRAINT FK_AuctionFollow_Auction FOREIGN KEY (AuctionId)
+        REFERENCES Sales.Auction (Id);
+GO
+
+-- 3.2
+ALTER TABLE Membership.Member
+    ADD AppLanguage CHAR(2) NOT NULL
+        CONSTRAINT DF_Member_AppLanguage DEFAULT 'ar'
+        CONSTRAINT CK_Member_AppLanguage CHECK (AppLanguage IN ('ar', 'en'));
+GO
+
+-- 3.3
+ALTER TABLE Catalog.Item
+    ADD IsFeatured BIT NOT NULL
+        CONSTRAINT DF_Item_IsFeatured DEFAULT 0;
+GO
+
+-- 3.4
+EXEC sp_rename 'Sales.Bid.IpAddress', 'DeviceIp', 'COLUMN';
+
+ALTER TABLE Logistics.Warehouse
+    DROP CONSTRAINT CK_Warehouse_Capacity;
+
+EXEC sp_rename 'Logistics.Warehouse.Capacity', 'MaxItems', 'COLUMN';
+
+ALTER TABLE Logistics.Warehouse
+    ADD CONSTRAINT CK_Warehouse_MaxItems CHECK (MaxItems > 0);
+GO
+
+
+-- 3.5
+ALTER TABLE Membership.Member
+    ALTER COLUMN FullName NVARCHAR(150) NOT NULL;
+
+-- 3.6
+ALTER TABLE Logistics.Warehouse
+    DROP CONSTRAINT CK_Warehouse_MaxItems;
+
+ALTER TABLE Logistics.Warehouse
+    ALTER COLUMN MaxItems SMALLINT NOT NULL;
+
+ALTER TABLE Logistics.Warehouse
+    ADD CONSTRAINT CK_Warehouse_MaxItems CHECK (MaxItems > 0 AND MaxItems <= 30000);
+
+GO
+
+-- 3.7
+ALTER TABLE Catalog.Category
+    DROP CONSTRAINT CK_Category_CommissionPercent;
+
+ALTER TABLE Catalog.Category
+    ADD CONSTRAINT CK_Category_CommissionPercent CHECK (CommissionPercent BETWEEN 0 AND 25);
+GO
+
+-- 3.8
+ALTER TABLE Sales.Auction
+    DROP CONSTRAINT CK_Auction_Status, DF_Auction_Status;
+
+ALTER TABLE Sales.Auction
+    ADD CONSTRAINT CK_Auction_Status CHECK (Status IN ('PendingReview', 'Draft', 'Live', 'Ended', 'Cancelled')),
+        CONSTRAINT DF_Auction_Status DEFAULT 'PendingReview' FOR Status;
+GO
+
+-- 3.9
+ALTER TABLE Sales.Auction
+    ADD BuyNowPrice DECIMAL(12,2) NULL;
+GO
+
+-- WITH CHECK: the new column is NULL in every existing row, and a CHECK on NULL
+-- evaluates to UNKNOWN (which passes), so validating the old rows is safe and
+-- cheap. WITH CHECK also keeps the constraint "trusted" so the optimizer can use it. 
+-- WITH NOCHECK would skip the old rows and leave the constraint untrusted;
+-- it is only needed when existing rows already break the rule and cannot be fixed.
+
+ALTER TABLE Sales.Auction
+    WITH CHECK
+    ADD CONSTRAINT CK_Auction_BuyNowPrice CHECK (BuyNowPrice > StartingPrice);
+GO
+
+-- 3.10
+ALTER TABLE Membership.Member
+    ADD CONSTRAINT UQ_Member_Mobile UNIQUE (Mobile);
+GO
+
+-- 3.11
+ALTER TABLE Membership.Member
+    ADD VerifiedAt DATETIME2(3) NULL;
+
+ALTER TABLE Membership.Member
+    DROP CONSTRAINT DF_Member_IsVerified;
+
+ALTER TABLE Membership.Member
+    DROP COLUMN IsVerified;
+
+GO
+-- 3.12
+CREATE SCHEMA Marketing;
+Go
+ALTER SCHEMA Marketing TRANSFER Sales.AuctionFollow;
+GO
+
 
 
 
