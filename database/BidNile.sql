@@ -138,7 +138,7 @@ CREATE TABLE Catalog.Item
     Title          NVARCHAR(150)     NOT NULL,
     Description    NVARCHAR(MAX)     NULL,      
     ConditionScore TINYINT           NOT NULL,   
-    Specifications NVARCHAR(MAX)     NOT NULL,   
+    Specifications JSON              NOT NULL,   
     ListedAt       DATETIME2(3)      NOT NULL
                    CONSTRAINT DF_Item_ListedAt DEFAULT SYSDATETIME(),
     SellerId       UNIQUEIDENTIFIER  NOT NULL,   
@@ -148,10 +148,10 @@ CREATE TABLE Catalog.Item
 
     CONSTRAINT PK_Item                      PRIMARY KEY (Id),
     CONSTRAINT CK_Item_ConditionScore       CHECK (ConditionScore BETWEEN 1 AND 10),
-    CONSTRAINT CK_Item_Specifications       CHECK (ISJSON(Specifications) = 1),
     CONSTRAINT CK_Item_SellerId_InspectorId CHECK (SellerId <> InspectorId)
 );
 GO
+
 
 CREATE TABLE Catalog.ItemPhoto
 (
@@ -167,6 +167,56 @@ CREATE TABLE Catalog.ItemPhoto
 GO
 
 
+-- SALES schema
+
+
+CREATE TABLE Sales.Auction
+(
+    Id            INT IDENTITY(1,1) NOT NULL,
+    ItemId        INT               NOT NULL,   
+    StartingPrice DECIMAL(12,2)     NOT NULL,
+    ReservePrice  DECIMAL(12,2)     NULL,       
+    BidIncrement  DECIMAL(12,2)     NOT NULL
+                  CONSTRAINT DF_Auction_BidIncrement DEFAULT 50.00,
+    StartAt       DATETIMEOFFSET    NOT NULL,
+    EndAt         DATETIMEOFFSET    NOT NULL,
+    Status        VARCHAR(20)       NOT NULL
+                  CONSTRAINT DF_Auction_Status DEFAULT 'Draft',
+
+    CONSTRAINT PK_Auction              PRIMARY KEY (Id),
+    CONSTRAINT CK_Auction_StartingPrice CHECK (StartingPrice > 0),
+    CONSTRAINT CK_Auction_ReservePrice  CHECK (ReservePrice >= StartingPrice),
+    CONSTRAINT CK_Auction_EndAt         CHECK (EndAt > StartAt),
+    CONSTRAINT CK_Auction_Status        CHECK (Status IN ('Draft', 'Live', 'Ended', 'Cancelled'))
+);
+GO
+
+CREATE TABLE Sales.Bid
+(
+    Id        BIGINT IDENTITY(1,1) NOT NULL,
+    AuctionId INT                  NOT NULL,   
+    MemberId  UNIQUEIDENTIFIER     NOT NULL,   
+    Amount    DECIMAL(12,2)        NOT NULL,
+    PlacedAt  DATETIME2(3)         NOT NULL
+              CONSTRAINT DF_Bid_PlacedAt DEFAULT SYSDATETIME(),
+    IpAddress VARCHAR(45)          NOT NULL,   
+
+    CONSTRAINT PK_Bid                   PRIMARY KEY (Id),
+    CONSTRAINT UQ_Bid_AuctionId_Amount  UNIQUE (AuctionId, Amount),
+    CONSTRAINT CK_Bid_Amount            CHECK (Amount > 0)
+);
+GO
+
+CREATE TABLE Sales.AuctionFollow
+(
+    MemberId   UNIQUEIDENTIFIER NOT NULL,   
+    AuctionId  INT              NOT NULL,   
+    FollowedAt DATETIME2(3)     NOT NULL
+               CONSTRAINT DF_AuctionFollow_FollowedAt DEFAULT SYSDATETIME(),
+
+    CONSTRAINT PK_AuctionFollow PRIMARY KEY (MemberId, AuctionId)
+);
+GO
 
 
 
