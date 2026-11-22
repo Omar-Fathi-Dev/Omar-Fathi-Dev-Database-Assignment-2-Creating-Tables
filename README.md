@@ -1,2 +1,3 @@
-# Omar-Fathi-Dev-Database-Assignment-2-Creating-Tables
-Assignment repo for assignment/1-12 (Database Assignment 2 : Creating Tables)
+**Name:** Omar Fathy Ali
+
+**Group:** Group 3
